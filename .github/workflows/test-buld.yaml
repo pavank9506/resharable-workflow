@@ -8,41 +8,6 @@ on:
         required: false
         default: 'python'
         type: string
-      # python_version:
-      #   description: 'Python version'
-      #   required: false
-      #   default: '3.10'
-      #   type: string
-      # node_version:
-      #   description: 'Node.js version'
-      #   required: false
-      #   default: '18'
-      #  type: string
-      # app_entry_file:
-      #   description: 'Application entry file (Python: app.py, Node.js: app.js)'
-      #   required: false
-      #   default: 'app.py'
-      #   type: string
-      # test_file:
-      #   description: 'Unit test file name'
-      #   required: false
-      #   default: 'test_app.py'
-      #   type: string
-      # test_pattern:
-      #   description: 'Test file pattern (Python)'
-      #   required: false
-      #   default: 'test_*.py'
-      #   type: string
-      # test_command:
-      #   description: 'Test command (Node.js)'
-      #   required: false
-      #   default: 'npm test'
-      #   type: string
-      # coverage_threshold:
-      #   description: 'Code coverage threshold'
-      #   required: false
-      #   default: '80'
-      #   type: string
       docker_image_name:
         description: 'Docker image name'
         required: false
@@ -53,21 +18,6 @@ on:
         required: false
         default: '1.0.0'
         type: string
-      # healthcheck_url:
-      #   description: 'Health check URL'
-      #   required: false
-      #   default: 'http://34.228.255.233:50000'
-      #   type: string
-      # build_docker:
-      #   description: 'Build and push Docker image'
-      #   required: false
-      #   default: true
-      #   type: boolean
-      # run_health_check:
-      #   description: 'Run health check after deployment'
-      #   required: false
-      #   default: false
-      #   type: boolean
     secrets:
       DOCKER_USERNAME:
         required: false
@@ -76,16 +26,8 @@ on:
 
 env:
   APP_LANGUAGE: ${{ inputs.app_language }}
-  # PYTHON_VERSION: ${{ inputs.python_version }}
-  # NODE_VERSION: ${{ inputs.node_version }}
-  # APP_ENTRY_FILE: ${{ inputs.app_entry_file }}
-  # TEST_FILE: ${{ inputs.test_file }}
-  # TEST_PATTERN: ${{ inputs.test_pattern }}
-  # TEST_COMMAND: ${{ inputs.test_command }}
-  # COVERAGE_THRESHOLD: ${{ inputs.coverage_threshold }}
   DOCKER_IMAGE_NAME: ${{ inputs.docker_image_name }}
   DOCKER_IMAGE_TAG: ${{ inputs.docker_image_tag }}
-  # HEALTHCHECK_URL: ${{ inputs.healthcheck_url }}
 
 permissions:
   id-token: write
