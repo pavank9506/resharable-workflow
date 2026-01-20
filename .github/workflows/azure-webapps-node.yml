@@ -17,62 +17,185 @@
 # For more information on the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # For more samples to get started with GitHub Action workflows to deploy to Azure: https://github.com/Azure/actions-workflow-samples
 
+name: workflow
+
 on:
   push:
-    branches: [ "main" ]
-  workflow_dispatch:
+    branches:
+      - main
 
 env:
-  AZURE_WEBAPP_NAME: your-app-name    # set this to your application's name
-  AZURE_WEBAPP_PACKAGE_PATH: '.'      # set this to the path to your web app project, defaults to the repository root
-  NODE_VERSION: '20.x'                # set this to the node version to use
+  # Language and Runtime Configuration
+  APP_LANGUAGE: ${{ vars.APP_LANGUAGE || 'python' }}  # 'python' or 'nodejs'
+  PYTHON_VERSION: ${{ vars.PYTHON_VERSION || '3.10' }}
+  NODE_VERSION: ${{ vars.NODE_VERSION || '18' }}
+  
+  # Application Configuration
+  APP_ENTRY_FILE: ${{ vars.APP_ENTRY_FILE || 'app.py' }}
+  HEALTHCHECK_URL: ${{ vars.HEALTHCHECK_URL || 'http://localhost:3000' }}
+  
+  # Testing Configuration
+  COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD || '80' }}
+  TEST_PATTERN: ${{ vars.TEST_PATTERN || 'test_*.py' }}
+  TEST_COMMAND: ${{ vars.TEST_COMMAND || 'npm test' }}
+  
+  # Docker Configuration
+  DOCKER_IMAGE_NAME: ${{ vars.DOCKER_IMAGE_NAME || 'myapp' }}
+  DOCKER_IMAGE_TAG: ${{ vars.DOCKER_IMAGE_TAG || 'latest' }}
+  DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY || 'docker.io' }}
 
 permissions:
+  id-token: write
   contents: read
+  security-events: write
+  pull-requests: read
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
+      # Python Setup
+      - name: Set up Python
+        if: ${{ env.APP_LANGUAGE == 'python' }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # Node.js Setup
+      - name: Set up Node.js
+        if: ${{ env.APP_LANGUAGE == 'nodejs' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Install Dependencies - Python
+      - name: Install Python Dependencies
+        if: ${{ env.APP_LANGUAGE == 'python' }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install coverage
+
+      # Install Dependencies - Node.js
+      - name: Install Node.js Dependencies
+        if: ${{ env.APP_LANGUAGE == 'nodejs' }}
+        run: npm ci
+
+      - name: Generate SBOM for source
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: sbom-source.spdx.json
+
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-source
+          path: sbom-source.spdx.json
+
+      # Run Tests - Python
+      - name: Run Python Unit Tests with Coverage
+        if: ${{ env.APP_LANGUAGE == 'python' }}
+        run: |
+          coverage run -m unittest ${{ env.APP_ENTRY_FILE }}
+          coverage report -m --fail-under=${{ env.COVERAGE_THRESHOLD }}
+
+      - name: Run Python Integration Tests with Coverage
+        if: ${{ env.APP_LANGUAGE == 'python' }}
+        run: |
+          coverage run -a -m unittest discover -s . -p "${{ env.TEST_PATTERN }}" -v
+          coverage report -m --fail-under=${{ env.COVERAGE_THRESHOLD }}
+          coverage html
+          coverage xml
+
+      # Run Tests - Node.js
+      - name: Run Node.js Tests
+        if: ${{ env.APP_LANGUAGE == 'nodejs' }}
+        run: ${{ env.TEST_COMMAND }}
+
+      - name: Upload Coverage Report
+        if: ${{ env.APP_LANGUAGE == 'python' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/
+
+      # Deploy - Python
+      - name: Deploy Python Application
+        if: ${{ env.APP_LANGUAGE == 'python' }}
+        run: |
+          nohup python3 ${{ env.APP_ENTRY_FILE }} &
+
+      # Deploy - Node.js
+      - name: Deploy Node.js Application
+        if: ${{ env.APP_LANGUAGE == 'nodejs' }}
+        run: |
+          nohup npm start &
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: Log in to Docker Registry
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin ${{ env.DOCKER_REGISTRY }}
+   
+    - name: Build Docker Image
+      run: docker build -t ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }} .
+   
+    - name: Push Docker Image
+      run: docker push ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+
+    - name: Generate SBOM with Syft
+      uses: anchore/sbom-action@v0
       with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
+        image: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+        format: spdx-json
+        output-file: sbom.spdx.json
 
-    - name: npm install, build, and test
-      run: |
-        npm install
-        npm run build --if-present
-        npm run test --if-present
-
-    - name: Upload artifact for deployment job
+    - name: Upload SBOM Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: node-app
-        path: .
+        name: sbom
+        path: sbom.spdx.json
 
-  deploy:
-    permissions:
-      contents: none
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: 'Development'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-
-    steps:
-    - name: Download artifact from build job
-      uses: actions/download-artifact@v4
+    - name: Run Trivy Vulnerability Scan
+      uses: aquasecurity/trivy-action@master
       with:
-        name: node-app
+        image-ref: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
 
-    - name: 'Deploy to Azure WebApp'
-      id: deploy-to-webapp
-      uses: azure/webapps-deploy@v2
+    - name: Upload Trivy Results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v4
       with:
-        app-name: ${{ env.AZURE_WEBAPP_NAME }}
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Install cosign
+      uses: sigstore/cosign-installer@v3
+
+    - name: Clear sigstore cache
+      run: rm -rf ~/.sigstore ~/.cache/sigstore
+
+    - name: Sign Docker Image
+      env:
+        COSIGN_EXPERIMENTAL: 1
+        SIGSTORE_NO_CACHE: "true"
+      run: |
+        cosign sign --yes ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+
+    - name: Push Signed Image to Docker Hub
+      run: docker push ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+      
+    - name: Log out from Docker Registry  
+      run: docker logout ${{ env.DOCKER_REGISTRY }}
+
+
+
