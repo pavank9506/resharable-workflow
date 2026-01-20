@@ -17,13 +17,10 @@ This document outlines the governance policies, standards, and best practices fo
 9. [Incident Management](#incident-management)
 10. [Approval Process](#approval-process)
 
----
 
 ## Governance Framework
 
 ### Purpose
-The CI/CD governance framework ensures consistent, secure, and reliable automation across all projects using this reusable workflow.
-
 ### Scope
 - All Python and Node.js applications
 - Docker containerized deployments

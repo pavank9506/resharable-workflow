@@ -1,0 +1,106 @@
+# CI/CD Governance Documentation
+
+---
+## Overview
+- Governance policies, standards, and best practices for the Reusable Build and Deploy Workflow
+
+---
+## Table of Contents
+1. Governance Framework
+2. Security Policies
+3. Code Quality Standards
+4. Testing Requirements
+5. Deployment Policies
+6. Access Control
+7. Audit and Compliance
+8. Change Management
+9. Incident Management
+10. Approval Process
+
+---
+## Governance Framework
+- Purpose: Ensure consistent, secure, reliable automation
+- Scope: Python/Node.js, Docker, GitHub Actions, Supply chain security
+- Responsibilities:
+  - DevOps Team: Maintain workflows
+  - Development Teams: Follow policies
+  - Security Team: Review configurations
+  - Release Manager: Approve deployments
+
+---
+## Security Policies
+- Secret Management: Use GitHub Secrets, rotate credentials
+- Image Scanning: Trivy, SBOM, resolve critical vulnerabilities
+- Image Signing: Cosign, OIDC, verify before deployment
+- Artifact Management: SBOM, scan reports, retention policies
+
+---
+## Code Quality Standards
+- Coverage ≥ 80%, fail if below
+- Python: PEP 8, type hints, linting
+- Node.js: ESLint, TypeScript, Prettier
+- Dependency Management: Pin versions, update monthly
+
+---
+## Testing Requirements
+- Unit & Integration tests, coverage ≥ 80%
+- Naming conventions: test_*.py, *.test.js
+- Store reports as artifacts
+
+---
+## Deployment Policies
+- Environments: Dev, Staging, Prod
+- Flow: Commit → Test → Build → Scan → Sign → Push
+- Pre-deployment: All tests pass, coverage, vulnerabilities, review
+- Approval: 1 DevOps/Release Manager
+- Rollback: Health checks, error rate, manual/auto
+
+---
+## Kubernetes Admission Control (Kyverno)
+- Enforce keyless image signing (GitHub OIDC via Cosign)
+- Example Policy:
+  - Only signed images from repo/branch allowed
+  - Block unsigned/manual images
+
+---
+## Access Control
+- Secret access: Org-level, role-based
+- Artifact access: Owners, workflow authors
+- Workflow modification: Feature branch, review, test, merge
+
+---
+## Audit and Compliance
+- Track: Workflow runs, builds, secrets, deployments, scans
+- Retention: 1 year logs
+- Compliance: Trivy, Syft, Cosign, coverage
+
+---
+## Change Management
+- Process: Issue → Review → Implement → Test → Approve → Merge
+- Branch strategy: main, develop, feature/*
+- Notify all teams
+
+---
+## Incident Management
+- Severity: P1–P4, response/resolution times
+- Response: Notify, investigate, ticket, document, improve
+- Security: Stop deployments, patch, resume
+
+---
+## Approval Process
+- Flow: Commit → Test → Review → Build/Scan → Approval → Deploy
+- Checklist: Style, tests, docs, vulnerabilities, credentials
+- Signoff: Name, timestamp, summary
+
+---
+## Enforcement
+- Automated: Coverage, scanning, SBOM, signing, upload
+- Manual: Code quality, approval, docs, incident response
+- Violations: Warning, suspension, access restriction
+
+---
+## References
+- Reusable Workflow README
+- Security Policy
+- Incident Response Plan
+- Disaster Recovery Plan
