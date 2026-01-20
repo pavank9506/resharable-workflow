@@ -51,8 +51,8 @@ on:
       docker_image_tag:
         description: 'Docker image tag'
         required: false
-        default: 1.0.0
-        type: number
+        default: '1.0.0'
+        type: string
       # healthcheck_url:
       #   description: 'Health check URL'
       #   required: false
