@@ -31,7 +31,7 @@ env:
 
 permissions:
   id-token: write
-  contents: read
+  congittents: read
   security-events: write
   pull-requests: read
 
@@ -40,18 +40,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Code                       # https://github.com/actions/checkout
         uses: actions/checkout@v4
 
       # Python Setup
-      - name: Set up Python
+      - name: Set up Python                       # https://github.com/actions/setup-python
         if: ${{ env.APP_LANGUAGE == 'python' }}
         uses: actions/setup-python@v4
         # with:
         #   python-version: ${{ env.PYTHON_VERSION }}
 
       # Node.js Setup
-      - name: Set up Node.js
+      - name: Set up Node.js                       # https://github.com/actions/setup-node
         if: ${{ env.APP_LANGUAGE == 'nodejs' }}
         uses: actions/setup-node@v4
         # with:
@@ -71,13 +71,13 @@ jobs:
         run: npm install
 
       - name: Generate SBOM for source
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@v0            # https://github.com/anchore/sbom-action
         with:
           path: .
           format: spdx-json
           output-file: sbom-source.spdx.json
 
-      - name: Upload SBOM Artifact
+      - name: Upload SBOM Artifact                  # https://github.com/actions/upload-artifact
         uses: actions/upload-artifact@v4
         with:
           name: sbom-source
@@ -108,31 +108,31 @@ jobs:
         run: npm run test:integration -- --coverage --fail-on-coverage-threshold=80
 
       # Upload Coverage Report - Python
-      - name: Upload Coverage Report
-        if: ${{ env.APP_LANGUAGE == 'python' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: htmlcov/
+      # - name: Upload Coverage Report
+      #   if: ${{ env.APP_LANGUAGE == 'python' }}
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: coverage-report
+      #     path: htmlcov/
       
-      - name: Generate Coverage HTML Report
-        if: ${{ env.APP_LANGUAGE == 'python' }}
-        run: |
-          coverage html
-          coverage xml
+      # - name: Generate Coverage HTML Report
+      #   if: ${{ env.APP_LANGUAGE == 'python' }}
+      #   run: |
+      #     coverage html
+      #     coverage xml
 
-      - name: Upload Coverage Report
-        if: ${{ env.APP_LANGUAGE == 'python' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: htmlcov/
+      # - name: Upload Coverage Report
+      #   if: ${{ env.APP_LANGUAGE == 'python' }}
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: coverage-report
+      #     path: htmlcov/
 
   docker-build:
     runs-on: ubuntu-latest
     needs: test
     steps:
-    - name: Checkout Code
+    - name: Checkout Code                                     # # https://github.com/actions/checkout
       uses: actions/checkout@v4
       
     - name: Log in to Docker Hub
@@ -144,33 +144,33 @@ jobs:
     - name: Push Docker Image
       run: docker push ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
 
-    - name: Generate SBOM with Syft
+    - name: Generate SBOM with Syft                         # https://github.com/anchore/sbom-action
       uses: anchore/sbom-action@v0
       with:
         image: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
         format: spdx-json
         output-file: sbom.spdx.json
 
-    - name: Upload SBOM Artifact
+    - name: Upload SBOM Artifact                            # https://github.com/actions/upload-artifact
       uses: actions/upload-artifact@v4
       with:
         name: sbom
         path: sbom.spdx.json
 
     - name: Run Trivy Vulnerability Scan
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@master                # https://github.com/aquasecurity/trivy-action
       with:
         image-ref: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
         format: 'sarif'
         output: 'trivy-results.sarif'
 
     - name: Upload Trivy Results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v4
+      uses: github/codeql-action/upload-sarif@v4          # https://github.com/github/codeql-action/blob/main/upload-sarif/action.yml
       with:
         sarif_file: 'trivy-results.sarif'
 
     - name: Install cosign
-      uses: sigstore/cosign-installer@v3
+      uses: sigstore/cosign-installer@v3                 # https://github.com/sigstore/cosign-installer
 
     - name: Clear sigstore cache
       run: rm -rf ~/.sigstore ~/.cache/sigstore
