@@ -31,7 +31,7 @@ env:
 
 permissions:
   id-token: write
-  congittents: read
+  # congittents: read
   security-events: write
   pull-requests: read
 
